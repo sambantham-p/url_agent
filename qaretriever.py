@@ -1,4 +1,3 @@
-import pickle
 import time
 import os
 import langchain
@@ -14,7 +13,7 @@ from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores.faiss import FAISS
 load_dotenv()
 
-def qaretriever(question,urls,st):
+def qaretriever(question,urls):
   main_loader = st.empty()
   llm = OpenAI(temperature = 0.9, max_tokens = 500)
 
@@ -27,15 +26,12 @@ def qaretriever(question,urls,st):
   main_loader.text('Recursive text splitter started Loading... ')
   docs = text_splitter.split_documents(data)
   embeddings = OpenAIEmbeddings()
-  main_loader.text('...Embeddings started Loading... ')
-  vector_index = FAISS.from_documents(docs, embeddings)
-  file_path = "vector_index.pkl"
-  with open(file_path, "wb") as f:
-      pickle.dump(vector_index, f)
+  main_loader.text('...Embeddings started ... ')
+  vector_index = FAISS.from_documents(docs,embeddings)
+  vector_index.save_local("faiss_index")
   if question:
-    if os.path.exists(file_path):
-        with open(file_path, "rb") as f:
-            vector_index = pickle.load(f)
-            result = RetrievalQAWithSourcesChain.from_llm(llm=llm,retriever=vector_index.as_retriever())
-            output = result({"question":question},return_only_outputs=True)
-            return output
+        vector_index = FAISS.load_local("faiss_index", embeddings)
+        result = RetrievalQAWithSourcesChain.from_llm(llm=llm,retriever=vector_index.as_retriever())
+        output = result({"question":question},return_only_outputs=True)
+        main_loader.text('Answer Found!')
+        return output
